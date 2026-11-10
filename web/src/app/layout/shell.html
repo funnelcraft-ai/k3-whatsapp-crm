@@ -1,0 +1,66 @@
+@if (s.impersonating()) {
+  <div class="imp-banner"><mat-icon>support_agent</mat-icon><span class="grow ellipsis">Support session{{ s.me()?.readOnly ? ' (read-only)' : '' }} · signed in as <b>{{ s.me()?.tenant?.name }}</b> admin · logged for the school</span><button mat-button (click)="endSupport()">End session</button></div>
+}
+<mat-toolbar class="topbar" [class.searching]="searching()" [class.with-imp]="s.impersonating()">
+  <button mat-icon-button (click)="toggleNav()" aria-label="Menu" class="menu-btn"><mat-icon>menu</mat-icon></button>
+  <a class="brand" [routerLink]="s.platformOnly() ? '/platform/institutions' : '/home'">
+    <img src="k3-logo.png" alt="K3 Solutions" width="36" height="36">
+    <span class="brand-text"><span><b>K3</b> {{ s.platformOnly() ? 'Platform' : 'Admissions' }}</span><small>Kontent · Konnect · Kommunicate</small></span>
+  </a>
+  @if (!s.platformOnly() && !s.billingLocked()) {
+    <div class="gsearch">
+      <mat-icon>search</mat-icon>
+      <input placeholder="Search leads, parents, phone numbers" [(ngModel)]="q" (ngModelChange)="search($event)" [matAutocomplete]="ac" aria-label="Search leads">
+      @if (searching()) { <button mat-icon-button (click)="searching.set(false); q = ''; results.set([])" aria-label="Close search"><mat-icon>close</mat-icon></button> }
+      <mat-autocomplete #ac="matAutocomplete" (optionSelected)="pickResult($event.option.value)" class="gsr-panel">
+        @for (l of results(); track l.id) {
+          <mat-option [value]="l"><div class="row"><k3-avatar [name]="l.student || l.parent" size="sm" /><span class="grow ellipsis">{{ l.student || l.parent }} <span class="muted small">· {{ l.parent }} · {{ l.program }}</span></span><k3-temp [temp]="l.ai?.temp" /></div></mat-option>
+        }
+      </mat-autocomplete>
+    </div>
+    <button mat-icon-button class="search-toggle" (click)="searching.set(true)" aria-label="Search"><mat-icon>search</mat-icon></button>
+  } @else { <span class="grow"></span> }
+  @if (demo) { <span class="pill p-pend demo-chip"><mat-icon>science</mat-icon>Demo data</span> }
+  <button mat-icon-button [matMenuTriggerFor]="acct" aria-label="Account" class="acct-btn"><k3-avatar [name]="userName()" size="md" color="#1a5fb4" /></button>
+  <mat-menu #acct xPosition="before" class="acct-menu">
+    <div class="acct-card" (click)="$event.stopPropagation()">
+      <k3-avatar [name]="userName()" size="lg" color="#1a5fb4" />
+      <div><div class="title">{{ userName() }}</div><div class="small muted">{{ s.me()?.user?.email }}</div><div class="small muted">{{ s.me()?.tenant?.name || 'K3 Solutions platform' }} · {{ s.role() === 'super_admin' ? 'Platform owner' : s.role() === 'admin' ? 'Administrator' : 'Counsellor' }}</div></div>
+    </div>
+    <mat-divider />
+    @if (!demo) { <button mat-menu-item (click)="password()"><mat-icon>password</mat-icon>Change password</button> }
+    @if (s.role() === 'admin' && !s.platformOnly() && !demo) { <a mat-menu-item routerLink="/settings/billing"><mat-icon>credit_card</mat-icon>Plan & billing</a> }
+    @if (!demo) { <button mat-menu-item (click)="logout()"><mat-icon>logout</mat-icon>Sign out</button> }
+    @else { <a mat-menu-item href="https://k3solutions.in" target="_blank" rel="noopener"><mat-icon>open_in_new</mat-icon>About K3 Solutions</a> }
+  </mat-menu>
+</mat-toolbar>
+
+<mat-sidenav-container class="frame" [class.rail]="isRail()" [class.with-imp]="s.impersonating()">
+  <mat-sidenav [mode]="mode() === 'modal' ? 'over' : 'side'" [opened]="mode() !== 'modal' || drawerOpen()" (closedStart)="drawerOpen.set(false)"
+    class="nav" [class.nav-rail]="isRail() && !drawerOpen()" [class.nav-float]="isRail() && drawerOpen()" [fixedInViewport]="mode() === 'modal'" [fixedTopGap]="0">
+    <div class="nav-inner">
+      @if (mode() === 'modal') { <div class="nav-head"><img src="k3-logo.png" alt="" width="32" height="32"><b>K3 Solutions</b></div> }
+      @if (!s.platformOnly() && !s.billingLocked()) {
+        <button mat-fab [extended]="!isRail() || drawerOpen()" class="nav-fab" (click)="newLead()" aria-label="New enquiry" matTooltip="New enquiry" [matTooltipDisabled]="!isRail() || drawerOpen()" matTooltipPosition="right">
+          <mat-icon>person_add</mat-icon>@if (!isRail() || drawerOpen()) {<span>New enquiry</span>}
+        </button>
+      }
+      @for (i of items(); track i.path) {
+        @if (i.section && (!isRail() || drawerOpen())) { <div class="nav-section">{{ i.section }}</div> } @else if (i.section) { <div class="nav-sep"></div> }
+        <a class="nav-item" [routerLink]="i.path" routerLinkActive="active" #rla="routerLinkActive" [matTooltip]="i.label" [matTooltipDisabled]="!isRail() || drawerOpen()" matTooltipPosition="right">
+          <span class="ind"><mat-icon [class.fill]="rla.isActive">{{ i.icon }}</mat-icon>@if (badge(i) && isRail() && !drawerOpen()) {<span class="dot">{{ badge(i) }}</span>}</span>
+          <span class="lbl">{{ i.label }}</span>
+          @if (badge(i)) { <span class="count">{{ badge(i) }}</span> }
+        </a>
+      }
+      <div class="grow"></div>
+      @if (!isRail() || drawerOpen()) { <div class="nav-foot small muted">K3 Solutions · Kontent Konnect Kommunicate</div> }
+    </div>
+  </mat-sidenav>
+  <mat-sidenav-content class="content">
+    @if (billing(); as b) {
+      <div class="banner {{ b.cls }}"><mat-icon>{{ b.icon }}</mat-icon><span class="grow">{{ b.text }}</span><a mat-flat-button routerLink="/settings/billing">{{ b.cta }}</a></div>
+    }
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

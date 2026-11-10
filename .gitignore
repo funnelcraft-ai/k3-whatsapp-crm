@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+web/node_modules/
+
+# build caches / outputs (server/public IS committed on purpose: the built web app that Hostinger-style hosts serve)
+web/.angular/
+web/dist/
+dist/
+
+# runtime data
+server/uploads/
+backups/
+tests/shots/
+*.log
+npm-debug.log*
+
+# secrets — never commit real credentials (the *.example files are fine)
+.env
+.env.*
+!.env.example
+!hostinger.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

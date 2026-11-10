@@ -1,0 +1,1 @@
+var t={value:null,set(a){this.value=a},take(){let a=this.value;return this.value=null,a}};export{t};
